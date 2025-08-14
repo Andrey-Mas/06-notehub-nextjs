@@ -3,12 +3,12 @@
 
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchNotes, createNote, deleteNote } from "../lib/api";
-import SearchBox from "../components/SearchBox/SearchBox";
-import NoteForm from "../components/NoteForm/NoteForm";
-import NoteList from "../components/NoteList/NoteList";
+import { fetchNotes, createNote, deleteNote } from "../../lib/api";
+import SearchBox from "../../components/SearchBox/SearchBox";
+import NoteForm from "../../components/NoteForm/NoteForm";
+import NoteList from "../../components/NoteList/NoteList";
 import css from "./NotesPage.module.css";
-import type { NotesResponse } from "../types/note";
+import type { NotesResponse } from "../../types/note";
 
 export default function NotesClient() {
   const [query, setQuery] = useState("");

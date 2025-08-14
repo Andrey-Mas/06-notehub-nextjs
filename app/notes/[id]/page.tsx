@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { fetchNoteById } from "../../lib/api";
+import { fetchNoteById } from "../../../lib/api";
 
 // у твоїй поточній збірці Next params — Promise, тому чекаємо його
 export default async function NoteDetailsPage({
