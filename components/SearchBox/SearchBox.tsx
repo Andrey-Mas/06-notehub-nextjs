@@ -1,35 +1,33 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import css from "./SearchBox.module.css";
+
+export interface SearchBoxProps {
+  value: string;
+  onChange: (value: string) => void;
+  delay?: number;
+}
 
 export default function SearchBox({
   value,
   onChange,
   delay = 300,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  delay?: number;
-}) {
-  const [text, setText] = useState(value);
+}: SearchBoxProps) {
+  const [local, setLocal] = useState(value);
 
-  // синхронізуємо, якщо value змінять ззовні
-  useEffect(() => setText(value), [value]);
+  useEffect(() => setLocal(value), [value]);
 
-  // дебаунс оновлення
   useEffect(() => {
-    const id = setTimeout(() => onChange(text), delay);
-    return () => clearTimeout(id);
-  }, [text, delay, onChange]);
+    const t = setTimeout(() => onChange(local), delay);
+    return () => clearTimeout(t);
+  }, [local, delay, onChange]);
 
   return (
     <input
       className={css.input}
-      type="text"
-      placeholder="Search..."
-      value={text}
-      onChange={(e) => setText(e.target.value)}
+      placeholder="Search notes…"
+      value={local}
+      onChange={(e) => setLocal(e.target.value)}
     />
   );
 }

@@ -1,14 +1,23 @@
-import Link from "next/link";
-import css from "./NoteList.module.css";
-import type { Note } from "../../types/note";
+"use client";
 
-interface Props {
-  notes?: Note[]; // робимо проп опційним
+import Link from "next/link";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { deleteNote } from "../../lib/api";
+import type { Note } from "../../types/note";
+import css from "./NoteList.module.css";
+
+export interface NoteListProps {
+  notes: Note[];
   onDelete: (id: string) => void;
 }
 
-export default function NoteList({ notes = [], onDelete }: Props) {
-  // дефолт []
+export default function NoteList({ notes }: NoteListProps) {
+  const qc = useQueryClient();
+  const remove = useMutation({
+    mutationFn: deleteNote,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["notes"] }),
+  });
+
   return (
     <ul className={css.list}>
       {notes.map((n) => (
@@ -25,9 +34,10 @@ export default function NoteList({ notes = [], onDelete }: Props) {
               <button
                 className={css.button}
                 type="button"
-                onClick={() => onDelete(n.id)}
+                onClick={() => remove.mutate(n.id)}
+                aria-busy={remove.isPending}
               >
-                Delete
+                {remove.isPending ? "Deleting…" : "Delete"}
               </button>
             </div>
           </div>

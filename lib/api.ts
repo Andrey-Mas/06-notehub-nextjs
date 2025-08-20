@@ -1,56 +1,47 @@
 // lib/api.ts
-import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
-import type { Note, NotesResponse } from "../types/note";
+import axios, { AxiosError } from "axios";
+import type { Note } from "../types/note";
+import type { NotesResponse, ApiError } from "../types/api";
 
-const api = axios.create({
-  baseURL: "https://notehub-public.goit.study/api",
-  headers: { "Content-Type": "application/json" },
+export const api = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_URL,
+  headers: {
+    Authorization: `Bearer ${process.env.NEXT_PUBLIC_API_TOKEN}`,
+  },
 });
 
-api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  const token = process.env.NEXT_PUBLIC_NOTEHUB_TOKEN ?? "";
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
-
-// ⚠️ Без query-параметрів — так уникаємо 400 від бекенду
-export const fetchNotes = async (): Promise<NotesResponse> => {
+// ⚠️ БЕЗ жодних query/page/limit — бек сам повертає ~10 нотаток
+export async function fetchNotes(): Promise<NotesResponse> {
   try {
     const { data } = await api.get<NotesResponse>("/notes");
     return data;
-  } catch (e) {
-    const err = e as AxiosError;
-    console.error("[API Error][GET /notes]", {
-      status: err.response?.status,
-      data: err.response?.data,
-      params: undefined,
-    });
-    throw err;
+  } catch (err) {
+    const e = err as AxiosError<ApiError>;
+    const raw = e.response?.data;
+    const msg =
+      raw?.message ||
+      (Array.isArray(raw?.errors) ? raw?.errors.join(", ") : undefined) ||
+      e.message ||
+      "Failed to fetch notes";
+    throw new Error(msg);
   }
-};
+}
 
-export const fetchNoteById = async (id: string): Promise<Note> => {
+export async function fetchNoteById(id: string): Promise<Note> {
   const { data } = await api.get<Note>(`/notes/${id}`);
   return data;
-};
+}
 
-// title ≥ 3, content ≥ 5, tag обов’язковий: "Work" | "Personal" | "Shopping" | "Other"
-export const createNote = async (
-  payload: Pick<Note, "title" | "content" | "tag">
-): Promise<Note> => {
-  try {
-    const { data } = await api.post<Note>("/notes", payload);
-    return data;
-  } catch (e) {
-    const err = e as AxiosError;
-    console.error("[API Error][POST /notes]", {
-      status: err.response?.status,
-      data: err.response?.data,
-    });
-    throw err;
-  }
-};
+export async function createNote(payload: {
+  title: string;
+  content: string;
+  tag: Note["tag"];
+}): Promise<Note> {
+  const { data } = await api.post<Note>("/notes", payload);
+  return data;
+}
 
-export const deleteNote = async (id: string): Promise<void> => {
-  await api.delete(`/notes/${id}`);
-};
+export async function deleteNote(id: string): Promise<Note> {
+  const { data } = await api.delete<Note>(`/notes/${id}`);
+  return data;
+}

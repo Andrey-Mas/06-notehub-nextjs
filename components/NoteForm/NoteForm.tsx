@@ -1,107 +1,120 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import css from "./NoteForm.module.css";
-import { TAGS, type Tag } from "../../types/note";
+import { TAGS, type Tag } from "../../types/note"; // ✅ ІМПОРТ масиву та типу
+
+export interface NoteFormProps {
+  onSubmit: (payload: {
+    title: string;
+    content: string;
+    tag: "Work" | "Personal" | "Shopping" | "Todo" | "Meeting";
+  }) => void;
+  isSubmitting: boolean;
+  errorMessage?: string;
+  onCancel?: () => void; // опціонально
+}
 
 export default function NoteForm({
   onSubmit,
-  isSubmitting = false,
+  isSubmitting,
   errorMessage,
-}: {
-  onSubmit: (payload: { title: string; content: string; tag: Tag }) => void;
-  isSubmitting?: boolean;
-  errorMessage?: string;
-}) {
+  onCancel,
+}: NoteFormProps) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  // "" означає, що тег ще не обрано
   const [tag, setTag] = useState<Tag | "">("");
 
-  const canSubmit = useMemo(
-    () =>
-      title.trim().length >= 3 &&
-      content.trim().length >= 5 &&
-      tag !== "" &&
-      !isSubmitting,
-    [title, content, tag, isSubmitting]
-  );
+  const validTitle = title.trim().length >= 3;
+  const validContent = content.trim().length >= 5;
+  const validTag = tag !== "";
 
-  const submit = (e: React.FormEvent) => {
+  const canSubmit = validTitle && validContent && validTag && !isSubmitting;
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canSubmit || tag === "") return;
-    onSubmit({ title: title.trim(), content: content.trim(), tag });
+    if (!canSubmit) return;
+
+    onSubmit({
+      title: title.trim(),
+      content: content.trim(),
+      tag: tag as Tag, // тут гарантовано не "", тобто це Tag
+    });
+
     setTitle("");
     setContent("");
     setTag("");
   };
 
+  const handleCancel = () => {
+    setTitle("");
+    setContent("");
+    setTag("");
+    onCancel?.(); // викликаємо, якщо передано
+  };
+
   return (
-    <form className={css.form} onSubmit={submit} aria-busy={isSubmitting}>
-      <label className={css.formGroup}>
-        Title
+    <form className={css.form} onSubmit={handleSubmit}>
+      <div className={css.formGroup}>
+        <label>Title</label>
         <input
           className={css.input}
-          placeholder="Title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          disabled={isSubmitting}
+          placeholder="Title"
         />
-      </label>
+        {!validTitle && <span className={css.error}>Title ≥ 3 chars.</span>}
+      </div>
 
-      <label className={css.formGroup}>
-        Content
+      <div className={css.formGroup}>
+        <label>Content</label>
         <textarea
           className={css.textarea}
-          placeholder="Content"
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          disabled={isSubmitting}
+          placeholder="Content"
         />
-      </label>
+        {!validContent && <span className={css.error}>Content ≥ 5 chars.</span>}
+      </div>
 
-      <label className={css.formGroup}>
-        Tag
+      <div className={css.formGroup}>
+        <label>Tag</label>
         <select
           className={css.select}
           value={tag}
           onChange={(e) => setTag(e.target.value as Tag | "")}
-          disabled={isSubmitting}
         >
-          <option value="">Select tag…</option>
-          {TAGS.map((t) => (
+          <option value="" disabled>
+            Select tag…
+          </option>
+          {TAGS.map((t: Tag) => (
             <option key={t} value={t}>
               {t}
             </option>
           ))}
         </select>
-      </label>
+        {!validTag && <span className={css.error}>Select a tag.</span>}
+      </div>
+
+      {errorMessage && <div className={css.error}>{errorMessage}</div>}
 
       <div className={css.actions}>
         <button
-          className={css.submitButton}
           type="submit"
+          className={css.submitButton}
           disabled={!canSubmit}
+          aria-disabled={!canSubmit}
         >
           {isSubmitting ? "Creating…" : "Create"}
         </button>
         <button
-          className={css.cancelButton}
           type="button"
-          onClick={() => {
-            setTitle("");
-            setContent("");
-            setTag("");
-          }}
-          disabled={isSubmitting}
+          className={css.cancelButton}
+          onClick={handleCancel}
         >
           Cancel
         </button>
       </div>
-
-      {!title.trim() || !content.trim() || tag === "" ? (
-        <p className={css.error}>Title ≥ 3, Content ≥ 5, and select a Tag.</p>
-      ) : null}
-
-      {errorMessage && <p className={css.error}>{errorMessage}</p>}
     </form>
   );
 }

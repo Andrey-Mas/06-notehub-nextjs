@@ -1,29 +1,27 @@
 import Link from "next/link";
 import { fetchNoteById } from "../../../lib/api";
+import css from "./NoteDetails.module.css";
 
-// у твоїй поточній збірці Next params — Promise, тому чекаємо його
 export default async function NoteDetailsPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-
   const note = await fetchNoteById(id);
 
   return (
-    <main style={{ padding: 24, maxWidth: 880, margin: "0 auto" }}>
-      <p>
-        <Link href="/notes">← Back to notes</Link>
-      </p>
-
-      <h1 style={{ margin: "16px 0" }}>{note.title}</h1>
-
-      <p style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>{note.content}</p>
-
-      <p style={{ marginTop: 16 }}>
-        <strong>Tag:</strong> {note.tag ?? "No tag"}
-      </p>
+    <main className={css.wrapper}>
+      <div className={css.container}>
+        <Link className={css.back} href="/notes">
+          ← Back to notes
+        </Link>
+        <h1 className={css.title}>{note.title}</h1>
+        <p className={css.content}>{note.content}</p>
+        <p className={css.meta}>
+          <strong>Tag:</strong> {note.tag}
+        </p>
+      </div>
     </main>
   );
 }
