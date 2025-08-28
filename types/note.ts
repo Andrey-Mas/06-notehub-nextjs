@@ -1,18 +1,10 @@
-// types/note.ts
-export const TAGS = [
-  "Work",
-  "Personal",
-  "Shopping",
-  "Todo",
-  "Meeting",
-] as const;
-export type Tag = (typeof TAGS)[number];
+export type NoteTag = "Todo" | "Work" | "Personal" | "Meeting" | "Shopping";
 
 export interface Note {
-  id: string;
+  id: string; // ← ЗМІНА! Було number
   title: string;
   content: string;
-  tag?: Tag;
+  tag: NoteTag;
   createdAt: string;
   updatedAt: string;
 }

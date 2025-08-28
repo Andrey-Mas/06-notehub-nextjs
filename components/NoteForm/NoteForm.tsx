@@ -1,120 +1,78 @@
 "use client";
-import { useState } from "react";
+import { Formik, Form, Field, ErrorMessage } from "formik";
+import * as Yup from "yup";
+import { createNote } from "@/lib/api";
+import { useMutation } from "@tanstack/react-query";
+import type { NoteTag } from "@/types/note";
 import css from "./NoteForm.module.css";
-import { TAGS, type Tag } from "../../types/note"; // ✅ ІМПОРТ масиву та типу
 
-export interface NoteFormProps {
-  onSubmit: (payload: {
-    title: string;
-    content: string;
-    tag: "Work" | "Personal" | "Shopping" | "Todo" | "Meeting";
-  }) => void;
-  isSubmitting: boolean;
-  errorMessage?: string;
-  onCancel?: () => void; // опціонально
-}
+const initialValues = { title: "", content: "", tag: "" as NoteTag };
 
-export default function NoteForm({
-  onSubmit,
-  isSubmitting,
-  errorMessage,
-  onCancel,
-}: NoteFormProps) {
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  // "" означає, що тег ще не обрано
-  const [tag, setTag] = useState<Tag | "">("");
+const schema = Yup.object({
+  title: Yup.string().min(3).max(50).required("Title is required"),
+  content: Yup.string().min(3).max(500).required("Content is required"),
+  tag: Yup.mixed<NoteTag>()
+    .oneOf(["Todo", "Work", "Personal", "Meeting", "Shopping"])
+    .required(),
+});
 
-  const validTitle = title.trim().length >= 3;
-  const validContent = content.trim().length >= 5;
-  const validTag = tag !== "";
-
-  const canSubmit = validTitle && validContent && validTag && !isSubmitting;
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!canSubmit) return;
-
-    onSubmit({
-      title: title.trim(),
-      content: content.trim(),
-      tag: tag as Tag, // тут гарантовано не "", тобто це Tag
-    });
-
-    setTitle("");
-    setContent("");
-    setTag("");
-  };
-
-  const handleCancel = () => {
-    setTitle("");
-    setContent("");
-    setTag("");
-    onCancel?.(); // викликаємо, якщо передано
-  };
+export default function NoteForm({ onSuccess }: { onSuccess: () => void }) {
+  const { mutateAsync, isPending } = useMutation({ mutationFn: createNote });
 
   return (
-    <form className={css.form} onSubmit={handleSubmit}>
-      <div className={css.formGroup}>
-        <label>Title</label>
-        <input
-          className={css.input}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Title"
-        />
-        {!validTitle && <span className={css.error}>Title ≥ 3 chars.</span>}
-      </div>
+    <Formik
+      initialValues={initialValues}
+      validationSchema={schema}
+      onSubmit={async (values, { resetForm }) => {
+        await mutateAsync(values);
+        resetForm();
+        onSuccess();
+      }}
+    >
+      <Form className={css.form}>
+        <label className={css.formGroup}>
+          Title
+          <Field className={css.input} name="title" placeholder="Note title" />
+          <ErrorMessage className={css.error} name="title" component="span" />
+        </label>
 
-      <div className={css.formGroup}>
-        <label>Content</label>
-        <textarea
-          className={css.textarea}
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="Content"
-        />
-        {!validContent && <span className={css.error}>Content ≥ 5 chars.</span>}
-      </div>
+        <label className={css.formGroup}>
+          Content
+          <Field
+            className={css.textarea}
+            as="textarea"
+            name="content"
+            rows={5}
+            placeholder="Write something..."
+          />
+          <ErrorMessage className={css.error} name="content" component="span" />
+        </label>
 
-      <div className={css.formGroup}>
-        <label>Tag</label>
-        <select
-          className={css.select}
-          value={tag}
-          onChange={(e) => setTag(e.target.value as Tag | "")}
-        >
-          <option value="" disabled>
-            Select tag…
-          </option>
-          {TAGS.map((t: Tag) => (
-            <option key={t} value={t}>
-              {t}
+        <label className={css.formGroup}>
+          Tag
+          <Field className={css.select} as="select" name="tag">
+            <option value="" disabled>
+              Select tag
             </option>
-          ))}
-        </select>
-        {!validTag && <span className={css.error}>Select a tag.</span>}
-      </div>
+            <option value="Todo">Todo</option>
+            <option value="Work">Work</option>
+            <option value="Personal">Personal</option>
+            <option value="Meeting">Meeting</option>
+            <option value="Shopping">Shopping</option>
+          </Field>
+          <ErrorMessage className={css.error} name="tag" component="span" />
+        </label>
 
-      {errorMessage && <div className={css.error}>{errorMessage}</div>}
-
-      <div className={css.actions}>
-        <button
-          type="submit"
-          className={css.submitButton}
-          disabled={!canSubmit}
-          aria-disabled={!canSubmit}
-        >
-          {isSubmitting ? "Creating…" : "Create"}
-        </button>
-        <button
-          type="button"
-          className={css.cancelButton}
-          onClick={handleCancel}
-        >
-          Cancel
-        </button>
-      </div>
-    </form>
+        <div className={css.actions}>
+          <button
+            className={css.submitButton}
+            type="submit"
+            disabled={isPending}
+          >
+            {isPending ? "Creating..." : "Create"}
+          </button>
+        </div>
+      </Form>
+    </Formik>
   );
 }

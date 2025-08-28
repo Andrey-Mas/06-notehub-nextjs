@@ -1,131 +1,133 @@
-// app/notes/Notes.client.tsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-
-import { fetchNotes, createNote, deleteNote } from "../../lib/api";
-import SearchBox from "../../components/SearchBox/SearchBox";
-import NoteForm from "../../components/NoteForm/NoteForm";
-import NoteList from "../../components/NoteList/NoteList";
-import Modal from "../../components/Modal/Modal";
-import Pagination from "../../components/Pagination/Pagination";
-
+import { useState, useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
+import { useDebounce } from "use-debounce";
+import { fetchNotes, deleteNote, type FetchNotesResponse } from "@/lib/api";
+import NoteList from "@/components/NoteList/NoteList";
+import Pagination from "@/components/Pagination/Pagination";
+import SearchBox from "@/components/SearchBox/SearchBox";
+import Modal from "@/components/Modal/Modal";
+import NoteForm from "@/components/NoteForm/NoteForm";
 import css from "./NotesPage.module.css";
-import type { NotesResponse } from "../../types/api";
 
-// простий дебаунс
-function useDebouncedValue<T>(value: T, delay = 300) {
-  const [v, setV] = useState<T>(value);
+export default function NotesClient({
+  initialPage,
+  initialQuery,
+}: {
+  initialPage: number;
+  initialQuery: string;
+}) {
+  const router = useRouter();
+  const [page, setPage] = useState(initialPage);
+  const [term, setTerm] = useState(initialQuery);
+  const [debouncedTerm] = useDebounce(term, 450);
+  const [isModalOpen, setModalOpen] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+
   useEffect(() => {
-    const id = setTimeout(() => setV(value), delay);
-    return () => clearTimeout(id);
-  }, [value, delay]);
-  return v;
-}
+    const params = new URLSearchParams();
+    if (page > 1) params.set("page", String(page));
+    const cleaned = debouncedTerm.trim().replace(/[^\p{L}\p{N}\s-]/gu, "");
+    if (cleaned.length >= 2) params.set("query", cleaned);
+    router.push(`/notes${params.toString() ? `?${params.toString()}` : ""}`);
+  }, [page, debouncedTerm, router]);
 
-interface NotesClientProps {
-  initialData: NotesResponse;
-}
-
-export default function NotesClient({ initialData }: NotesClientProps) {
-  const qc = useQueryClient();
-
-  // пошук (з 1-ї літери) + модалка + пагінація (клієнтська)
-  const [query, setQuery] = useState("");
-  const debouncedQuery = useDebouncedValue(query, 300);
-
-  const [page, setPage] = useState(1);
-  const PER_PAGE = 12; // скільки карток показуємо на сторінці
-
-  const [open, setOpen] = useState(false);
-
-  // тягнемо БЕЗ параметрів — API повертає ~10 нотаток
-  const { data, isLoading, isFetching, error } = useQuery<NotesResponse>({
-    queryKey: ["notes"],
-    queryFn: () => fetchNotes(),
-    initialData,
-    staleTime: 10_000,
-    refetchOnMount: false,
-  });
-
-  // створення
-  const createMutation = useMutation({
-    mutationFn: createNote,
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["notes"] });
-      setOpen(false);
+  const { data, isLoading, isError, refetch } = useQuery<FetchNotesResponse>({
+    queryKey: ["notes", { page, query: debouncedTerm }],
+    queryFn: () => {
+      abortRef.current?.abort();
+      abortRef.current = new AbortController();
+      return fetchNotes(
+        { page, query: debouncedTerm },
+        { signal: abortRef.current.signal },
+      );
     },
+    placeholderData: (prev) => prev,
   });
 
-  // видалення
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteNote(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["notes"] }),
-  });
-
-  // фільтрація з 1-ї літери на клієнті
-  const all = data?.notes ?? [];
-  const filtered = useMemo(() => {
-    const q = debouncedQuery.trim().toLowerCase();
-    if (!q) return all;
-    return all.filter(
-      (n) =>
-        n.title.toLowerCase().includes(q) ||
-        n.content.toLowerCase().includes(q) ||
-        (n.tag ?? "").toLowerCase().includes(q)
-    );
-  }, [all, debouncedQuery]);
-
-  // коли міняється пошук — повертаємось на 1 сторінку
-  useEffect(() => setPage(1), [debouncedQuery]);
-
-  // клієнтська пагінація
-  const totalItems = filtered.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / PER_PAGE));
-  const safePage = Math.min(page, totalPages);
-  const start = (safePage - 1) * PER_PAGE;
-  const currentSlice = filtered.slice(start, start + PER_PAGE);
+  const handlePageChange = (p: number) => setPage(p);
+  const handleSearchChange = (v: string) => {
+    setTerm(v);
+    setPage(1);
+  };
+  const openModal = () => setModalOpen(true);
+  const closeModal = () => {
+    setModalOpen(false);
+    refetch();
+  };
+  const onDelete = async (id: string) => {
+    await deleteNote(id);
+    refetch();
+  };
 
   if (isLoading) return <p>Loading, please wait...</p>;
-  if (error) return <p>Something went wrong.</p>;
+  if (isError || !data) return <p>Something went wrong.</p>;
 
   return (
-    <section className={css.app}>
+    <div className={css.app}>
+      {/* Тулбар: зліва пошук, справа кнопка */}
       <div className={css.toolbar}>
-        <SearchBox value={query} onChange={setQuery} />
-        <button className={css.button} onClick={() => setOpen(true)}>
-          + New note
+        <SearchBox value={term} onChange={handleSearchChange} />
+        <button className={css.primary} onClick={openModal}>
+          Create note +
         </button>
       </div>
 
-      <NoteList
-        notes={currentSlice}
-        onDelete={(id) => deleteMutation.mutate(id)}
-      />
+      {/* Пагінація — строго по центру, над нотатками */}
+      {data.totalPages > 1 && (
+        <div className={css.paginationTop}>
+          <Pagination
+            currentPage={page}
+            totalPages={data.totalPages}
+            onPageChange={handlePageChange}
+          />
+        </div>
+      )}
 
-      {/* <Pagination
-        currentPage={safePage}
-        totalItems={totalItems}
-        perPage={PER_PAGE}
-        onPageChange={setPage}
-        isLoading={isFetching}
-      /> */}
-      <Pagination
-        currentPage={page}
-        totalPages={data?.totalPages ?? 1}
-        onPageChange={setPage}
-        isLoading={isFetching}
-      />
+      {data.notes.length === 0 ? (
+        <div
+          style={{
+            padding: 24,
+            border: "1px dashed #dee2e6",
+            borderRadius: 8,
+            background: "#fff",
+          }}
+        >
+          <p style={{ margin: 0 }}>
+            No notes found
+            {term.trim() ? (
+              <>
+                {" "}
+                for “<strong>{term.trim()}</strong>”.
+              </>
+            ) : (
+              "."
+            )}
+          </p>
+          {term.trim() && (
+            <button
+              className={css.buttonPrimary}
+              style={{ marginTop: 12 }}
+              onClick={() => {
+                setTerm("");
+                setPage(1);
+              }}
+            >
+              Clear search
+            </button>
+          )}
+        </div>
+      ) : (
+        <NoteList notes={data.notes} onDelete={onDelete} />
+      )}
 
-      <Modal open={open} onClose={() => setOpen(false)}>
-        <NoteForm
-          onSubmit={(payload) => createMutation.mutate(payload)}
-          isSubmitting={createMutation.isPending}
-          errorMessage={(createMutation.error as Error | undefined)?.message}
-          onCancel={() => setOpen(false)}
-        />
-      </Modal>
-    </section>
+      {isModalOpen && (
+        <Modal onClose={closeModal}>
+          <NoteForm onSuccess={closeModal} />
+        </Modal>
+      )}
+    </div>
   );
 }

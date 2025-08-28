@@ -60,10 +60,6 @@
   align-items: center;
   margin-top: auto;
 }
-.footer > div {
-  display: flex;
-  gap: 8px; /* відстань між кнопками */
-}
 
 .tag {
   display: inline-block;
@@ -84,7 +80,7 @@
   padding: 6px 12px;
   font-size: 14px;
   color: #fff;
-  background-color: #0d6efd;
+  background-color: #0d6efd; /* синій колір */
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -92,41 +88,7 @@
   display: inline-block;
   transition: background-color 0.2s ease;
 }
-.link,
-.button {
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
-  min-width: 70px; /* однакова ширина */
-  height: 36px; /* однакова висота */
-  padding: 0 12px;
-  font-size: 14px;
-  font-weight: 500;
-  border-radius: 4px;
-  text-decoration: none;
-  cursor: pointer;
-}
 
 .link:hover {
   background-color: #0b5ed7;
-}
-.link {
-  background-color: #0d6efd;
-  color: #fff;
-  border: none;
-}
-
-.button {
-  background-color: #dc3545;
-  color: #fff;
-  border: none;
-}
-
-.button:hover {
-  background-color: #bb2d3b;
-}
-
-.button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }

@@ -1,7 +1,6 @@
 "use client";
-
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { ReactQueryStreamedHydration } from "@tanstack/react-query-next-experimental";
 import { useState } from "react";
 
 export default function TanStackProvider({
@@ -12,8 +11,8 @@ export default function TanStackProvider({
   const [client] = useState(() => new QueryClient());
   return (
     <QueryClientProvider client={client}>
-      {children}
-      <ReactQueryDevtools initialIsOpen={false} />
+      {/* Підтримка Streamed Hydration в App Router */}
+      <ReactQueryStreamedHydration>{children}</ReactQueryStreamedHydration>
     </QueryClientProvider>
   );
 }

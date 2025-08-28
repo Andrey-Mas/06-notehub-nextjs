@@ -1,27 +1,27 @@
-import Link from "next/link";
-import { fetchNoteById } from "../../../lib/api";
-import css from "./NoteDetails.module.css";
+import {
+  HydrationBoundary,
+  QueryClient,
+  dehydrate,
+} from "@tanstack/react-query";
+import { fetchNoteById } from "@/lib/api";
+import NoteDetailsClient from "./NoteDetails.client";
 
 export default async function NoteDetailsPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: { id: string };
 }) {
-  const { id } = await params;
-  const note = await fetchNoteById(id);
+  const id = params.id;
+  const qc = new QueryClient();
+
+  await qc.prefetchQuery({
+    queryKey: ["note", id],
+    queryFn: () => fetchNoteById(id),
+  });
 
   return (
-    <main className={css.wrapper}>
-      <div className={css.container}>
-        <Link className={css.back} href="/notes">
-          ← Back to notes
-        </Link>
-        <h1 className={css.title}>{note.title}</h1>
-        <p className={css.content}>{note.content}</p>
-        <p className={css.meta}>
-          <strong>Tag:</strong> {note.tag}
-        </p>
-      </div>
-    </main>
+    <HydrationBoundary state={dehydrate(qc)}>
+      <NoteDetailsClient />
+    </HydrationBoundary>
   );
 }

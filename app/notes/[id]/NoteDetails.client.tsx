@@ -1,37 +1,33 @@
 "use client";
-
-import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { fetchNoteById } from "../../../lib/api";
+import { useParams } from "next/navigation";
+import { fetchNoteById } from "@/lib/api";
 import css from "./NoteDetails.module.css";
 
-interface NoteDetailsClientProps {
-  id: string;
-}
-
-export default function NoteDetailsClient({ id }: NoteDetailsClientProps) {
-  const { data, isLoading, error } = useQuery({
+export default function NoteDetailsClient() {
+  const { id } = useParams<{ id: string }>();
+  const {
+    data: note,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["note", id],
-    queryFn: () => fetchNoteById(id),
-    refetchOnMount: false,
+    queryFn: () => fetchNoteById(String(id)),
   });
 
-  if (isLoading) return <p className={css.wrapper}>Loading…</p>;
-  if (error || !data)
-    return <p className={css.wrapper}>Failed to load note.</p>;
+  if (isLoading) return <p>Loading, please wait...</p>;
+  if (isError || !note) return <p>Something went wrong.</p>;
 
   return (
-    <main className={css.wrapper}>
-      <div className={css.container}>
-        <Link className={css.back} href="/notes">
-          ← Back to notes
-        </Link>
-        <h1 className={css.title}>{data.title}</h1>
-        <p className={css.content}>{data.content}</p>
-        <p className={css.meta}>
-          <strong>Tag:</strong> {data.tag}
-        </p>
+    <div className={css.container}>
+      <div className={css.item}>
+        <div className={css.header}>
+          <h2>{note.title}</h2>
+          <span className={css.tag}>{note.tag}</span>
+        </div>
+        <p className={css.content}>{note.content}</p>
+        <p className={css.date}>{new Date(note.createdAt).toLocaleString()}</p>
       </div>
-    </main>
+    </div>
   );
 }
