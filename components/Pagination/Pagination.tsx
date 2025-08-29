@@ -1,48 +1,44 @@
 "use client";
+import ReactPaginate from "react-paginate";
 import css from "./Pagination.module.css";
+
+export interface PaginationProps {
+  currentPage: number; // 1-based
+  totalPages: number;
+  onPageChange: (page: number) => void; // 1-based
+}
 
 export default function Pagination({
   currentPage,
   totalPages,
   onPageChange,
-}: {
-  currentPage: number;
-  totalPages: number;
-  onPageChange: (p: number) => void;
-}) {
+}: PaginationProps) {
   if (totalPages <= 1) return null;
-  const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
-
-  const canPrev = currentPage > 1;
-  const canNext = currentPage < totalPages;
 
   return (
-    <ul className={css.pagination}>
-      <li
-        className={!canPrev ? css.disabled : undefined}
-        onClick={() => canPrev && onPageChange(currentPage - 1)}
-        aria-label="Previous page"
-      >
-        <a>‹</a>
-      </li>
-
-      {pages.map((p) => (
-        <li
-          key={p}
-          className={p === currentPage ? css.active : undefined}
-          onClick={() => onPageChange(p)}
-        >
-          <a>{p}</a>
-        </li>
-      ))}
-
-      <li
-        className={!canNext ? css.disabled : undefined}
-        onClick={() => canNext && onPageChange(currentPage + 1)}
-        aria-label="Next page"
-      >
-        <a>›</a>
-      </li>
-    </ul>
+    <ReactPaginate
+      forcePage={currentPage - 1} // 0-based для lib
+      pageCount={totalPages}
+      onPageChange={(e) => onPageChange(e.selected + 1)} // назад у 1-based
+      // підключаємо твої класи
+      containerClassName={css.pagination}
+      pageClassName={css.page}
+      pageLinkClassName={css.link}
+      activeClassName={css.active}
+      activeLinkClassName={css.activeLink}
+      previousClassName={css.page}
+      nextClassName={css.page}
+      previousLinkClassName={css.link}
+      nextLinkClassName={css.link}
+      disabledClassName={css.disabled}
+      breakClassName={css.page}
+      breakLinkClassName={css.link}
+      // вміст
+      previousLabel="‹"
+      nextLabel="›"
+      breakLabel="…"
+      marginPagesDisplayed={1}
+      pageRangeDisplayed={3}
+    />
   );
 }

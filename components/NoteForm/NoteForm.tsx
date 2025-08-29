@@ -6,6 +6,11 @@ import { useMutation } from "@tanstack/react-query";
 import type { NoteTag } from "@/types/note";
 import css from "./NoteForm.module.css";
 
+interface NoteFormProps {
+  onSuccess: () => void;
+  onCancel: () => void;
+}
+
 const initialValues = { title: "", content: "", tag: "" as NoteTag };
 
 const schema = Yup.object({
@@ -13,10 +18,10 @@ const schema = Yup.object({
   content: Yup.string().min(3).max(500).required("Content is required"),
   tag: Yup.mixed<NoteTag>()
     .oneOf(["Todo", "Work", "Personal", "Meeting", "Shopping"])
-    .required(),
+    .required("Tag is required"),
 });
 
-export default function NoteForm({ onSuccess }: { onSuccess: () => void }) {
+export default function NoteForm({ onSuccess, onCancel }: NoteFormProps) {
   const { mutateAsync, isPending } = useMutation({ mutationFn: createNote });
 
   return (
@@ -64,6 +69,9 @@ export default function NoteForm({ onSuccess }: { onSuccess: () => void }) {
         </label>
 
         <div className={css.actions}>
+          <button className={css.cancelButton} type="button" onClick={onCancel}>
+            Cancel
+          </button>
           <button
             className={css.submitButton}
             type="submit"

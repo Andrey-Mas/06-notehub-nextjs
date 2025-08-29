@@ -6,6 +6,7 @@ import css from "./NoteDetails.module.css";
 
 export default function NoteDetailsClient() {
   const { id } = useParams<{ id: string }>();
+
   const {
     data: note,
     isLoading,
@@ -13,6 +14,7 @@ export default function NoteDetailsClient() {
   } = useQuery({
     queryKey: ["note", id],
     queryFn: () => fetchNoteById(String(id)),
+    refetchOnMount: false, // ✅ за вимогою
   });
 
   if (isLoading) return <p>Loading, please wait...</p>;

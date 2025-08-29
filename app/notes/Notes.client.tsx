@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useDebounce } from "use-debounce";
-import { fetchNotes, deleteNote, type FetchNotesResponse } from "@/lib/api";
+import { fetchNotes, type FetchNotesResponse } from "@/lib/api";
 import NoteList from "@/components/NoteList/NoteList";
 import Pagination from "@/components/Pagination/Pagination";
 import SearchBox from "@/components/SearchBox/SearchBox";
@@ -31,10 +31,11 @@ export default function NotesClient({
     if (page > 1) params.set("page", String(page));
     const cleaned = debouncedTerm.trim().replace(/[^\p{L}\p{N}\s-]/gu, "");
     if (cleaned.length >= 2) params.set("query", cleaned);
-    router.push(`/notes${params.toString() ? `?${params.toString()}` : ""}`);
+    const qs = params.toString();
+    router.push(`/notes${qs ? `?${qs}` : ""}`);
   }, [page, debouncedTerm, router]);
 
-  const { data, isLoading, isError, refetch } = useQuery<FetchNotesResponse>({
+  const { data, isLoading, isError } = useQuery<FetchNotesResponse>({
     queryKey: ["notes", { page, query: debouncedTerm }],
     queryFn: () => {
       abortRef.current?.abort();
@@ -53,29 +54,24 @@ export default function NotesClient({
     setPage(1);
   };
   const openModal = () => setModalOpen(true);
-  const closeModal = () => {
-    setModalOpen(false);
-    refetch();
-  };
-  const onDelete = async (id: string) => {
-    await deleteNote(id);
-    refetch();
-  };
+  const closeModal = () => setModalOpen(false);
 
   if (isLoading) return <p>Loading, please wait...</p>;
   if (isError || !data) return <p>Something went wrong.</p>;
 
   return (
     <div className={css.app}>
-      {/* Тулбар: зліва пошук, справа кнопка */}
+      {/* тулбар */}
       <div className={css.toolbar}>
         <SearchBox value={term} onChange={handleSearchChange} />
-        <button className={css.primary} onClick={openModal}>
-          Create note +
-        </button>
+        <div className={css.toolbarRight}>
+          <button className={css.primary} onClick={openModal}>
+            Create note +
+          </button>
+        </div>
       </div>
 
-      {/* Пагінація — строго по центру, над нотатками */}
+      {/* пагінація зверху */}
       {data.totalPages > 1 && (
         <div className={css.paginationTop}>
           <Pagination
@@ -86,6 +82,7 @@ export default function NotesClient({
         </div>
       )}
 
+      {/* список */}
       {data.notes.length === 0 ? (
         <div
           style={{
@@ -108,7 +105,7 @@ export default function NotesClient({
           </p>
           {term.trim() && (
             <button
-              className={css.buttonPrimary}
+              className={css.primary}
               style={{ marginTop: 12 }}
               onClick={() => {
                 setTerm("");
@@ -120,12 +117,12 @@ export default function NotesClient({
           )}
         </div>
       ) : (
-        <NoteList notes={data.notes} onDelete={onDelete} />
+        <NoteList notes={data.notes} page={page} query={debouncedTerm} />
       )}
 
       {isModalOpen && (
         <Modal onClose={closeModal}>
-          <NoteForm onSuccess={closeModal} />
+          <NoteForm onSuccess={closeModal} onCancel={closeModal} />
         </Modal>
       )}
     </div>
