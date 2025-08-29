@@ -1,8 +1,9 @@
 "use client";
+
 import { Formik, Form, Field, ErrorMessage } from "formik";
 import * as Yup from "yup";
 import { createNote } from "@/lib/api";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { NoteTag } from "@/types/note";
 import css from "./NoteForm.module.css";
 
@@ -22,7 +23,11 @@ const schema = Yup.object({
 });
 
 export default function NoteForm({ onSuccess, onCancel }: NoteFormProps) {
-  const { mutateAsync, isPending } = useMutation({ mutationFn: createNote });
+  const qc = useQueryClient();
+
+  const { mutateAsync, isPending } = useMutation({
+    mutationFn: createNote,
+  });
 
   return (
     <Formik
@@ -30,6 +35,8 @@ export default function NoteForm({ onSuccess, onCancel }: NoteFormProps) {
       validationSchema={schema}
       onSubmit={async (values, { resetForm }) => {
         await mutateAsync(values);
+        // ✅ інвалідовуємо всі варіації списку нотаток (будь-яка сторінка/пошук)
+        await qc.invalidateQueries({ queryKey: ["notes"] });
         resetForm();
         onSuccess();
       }}
@@ -69,7 +76,12 @@ export default function NoteForm({ onSuccess, onCancel }: NoteFormProps) {
         </label>
 
         <div className={css.actions}>
-          <button className={css.cancelButton} type="button" onClick={onCancel}>
+          <button
+            className={css.cancelButton}
+            type="button"
+            onClick={onCancel}
+            disabled={isPending}
+          >
             Cancel
           </button>
           <button
